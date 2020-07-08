@@ -27,7 +27,7 @@ class HashTable:
         if capacity < MIN_CAPACITY:
             self.capacity = MIN_CAPACITY
         self.storage = [None]*self.capacity
-        # self.item_stored = 0
+        self.item_stored = 0
 
     def get_num_slots(self):
         """
@@ -101,9 +101,33 @@ class HashTable:
         Implement this.
         """
         # Your code here
-        # hash the key
         hash_index = self.hash_index(key)
-        self.storage[hash_index] = HashTableEntry(key, value)
+
+        # insert into an empty spot
+        if not self.storage[hash_index]:
+            self.storage[hash_index] = HashTableEntry(key, value)
+            self.item_stored += 1
+
+        # linked list exists at current location
+        # two situations: update value for an existing key or create a new entry for the new key
+        else:
+            current = self.storage[hash_index]
+
+            while current.key != key and current.next:
+                current = current.next
+
+            # find key, update current value
+            if current.key == key:
+                current.value = value
+
+            # key not found, add a entry
+            else:
+                current.next = HashTableEntry(key, value)
+                self.item_stored += 1
+
+        # resize if load factor is too big
+        if self.get_load_factor() > 0.7:
+            self.resize(self.capacity*2)
 
     def delete(self, key):
         """
@@ -114,15 +138,37 @@ class HashTable:
         Implement this.
         """
         # Your code here
-        # hash the key
         hash_index = self.hash_index(key)
-        # check if the key is in the storage
-        # if it is, re-assign the value to None
-        if self.storage[hash_index] is not None:
-            self.storage[hash_index] = None
-        # if not, print a warning
-        else:
+        current = self.storage[hash_index]
+        # 1. nothing to delete
+        if not current:
             print("The key is not found")
+
+        # 2. 1 element, the head in the index bucket
+        elif not current.next:
+            self.storage[hash_index] = None
+            self.item_stored -= 1
+        else:
+            # store a pointer to the previous node
+            prev = None
+
+            # Move to the next node if key won't match and there is a next
+            while current.key != key and current.next:
+                prev = current
+                current = current.next
+
+            # 3. value to delete in the end of index bucket
+            if not current.next:
+                prev.next = None
+                self.item_stored -= 1
+            # 4. value in the middle of the index bucket
+            else:
+                prev.next = current.next
+                self.item_stored -= 1
+
+        # resize if load factor is too small
+        if self.get_load_factor() < 0.2:
+            self.resize(self.capacity // 2)
 
     def get(self, key):
         """
@@ -134,8 +180,14 @@ class HashTable:
         """
         # Your code here
         hash_index = self.hash_index(key)
-        if self.storage[hash_index] is not None:
-            return self.storage[hash_index].value
+        if self.storage[hash_index]:
+            current = self.storage[hash_index]
+            while current.key is not key and current.next:
+                current = current.next
+            if not current.next:
+                return current.value
+            else:
+                return current.value
         else:
             return None
 
@@ -147,6 +199,19 @@ class HashTable:
         Implement this.
         """
         # Your code here
+        old_storage = self.storage
+
+        # initialize new hashtable
+        self.capacity = new_capacity
+        self.storage = [None] * new_capacity
+
+        # loop through and add each node to new hashtable
+        for item in old_storage:
+            if item:
+                current = item
+                while current:
+                    self.put(current.key, current.value)
+                    current = current.next
 
 
 if __name__ == "__main__":
